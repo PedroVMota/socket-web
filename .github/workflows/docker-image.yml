@@ -5,13 +5,9 @@ on:
     branches:
       - main
       - master
+    tags:
+      - "v*"
   workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: Skip unit tests before publishing
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -29,10 +25,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Run tests
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.skip_tests)
-        run: npm test
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -46,20 +38,44 @@ jobs:
       - name: Prepare image name
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
-      - name: Bump minor version and update manifest
-        if: github.event_name == 'push'
+      - name: Resolve image version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            npm version minor --no-git-tag-version
+            VERSION="$(node -p "require('./package.json').version")"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+
+          if [[ -z "${VERSION}" || "${VERSION}" == "undefined" || "${VERSION}" == "null" ]]; then
+            echo "Invalid image version: ${VERSION:-<empty>}" >&2
+            exit 1
+          fi
+
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=v${VERSION}" >> "$GITHUB_ENV"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Update manifest
+        if: github.ref_type == 'branch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          npm version minor --no-git-tag-version
-          VERSION="$(node -p "require('./package.json').version")"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
           node <<'NODE'
           const fs = require('node:fs');
           const path = 'infra/manifests/deployment.yaml';
-          const image = `ghcr.io/${process.env.IMAGE_NAME}:${process.env.VERSION}`;
+          const image = `ghcr.io/${process.env.IMAGE_NAME}:${process.env.RELEASE_TAG}`;
+          if (!process.env.VERSION || process.env.VERSION === 'undefined' || process.env.VERSION === 'null') {
+            throw new Error(`Invalid image version: ${process.env.VERSION}`);
+          }
+          if (!process.env.RELEASE_TAG || process.env.RELEASE_TAG === 'vundefined' || process.env.RELEASE_TAG === 'vnull') {
+            throw new Error(`Invalid release tag: ${process.env.RELEASE_TAG}`);
+          }
           const manifest = fs.readFileSync(path, 'utf8').replace(
             /image: ghcr\.io\/pedrovmota\/socket-web:[^\s]+/,
             `image: ${image}`
@@ -68,20 +84,30 @@ jobs:
           NODE
 
           git add package.json infra/manifests/deployment.yaml
-          git commit -m "chore: release v${VERSION} [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "Manifest already points to ${RELEASE_TAG}"
+          else
+            git commit -m "chore: release ${RELEASE_TAG} [skip ci]"
+            git push
+          fi
 
-      - name: Use current version
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          VERSION="$(node -p 'require("./package.json").version')"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Tag ${RELEASE_TAG} already exists"
+          else
+            git tag "${RELEASE_TAG}"
+            git push origin "${RELEASE_TAG}"
+          fi
 
-      - name: Build and push versioned image
+      - name: Build and push tagged image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ env.RELEASE_TAG }}
             ghcr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "${RELEASE_TAG}" || gh release create "${RELEASE_TAG}" --generate-notes
