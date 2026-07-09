@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: socket-web
-          image: ghcr.io/pedrovmota/socket-web:v1.3.0
+          image: ghcr.io/pedrovmota/socket-web:v1.4.0
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
