@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: server
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: c-web-socket-server
+    app.kubernetes.io/part-of: iot-p3
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/PedroVMota/c-web-socket-server.git
+    targetRevision: origin
+    path: infra/manifests
+  destination:
+    namespace: dev
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
