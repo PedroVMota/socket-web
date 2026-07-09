@@ -49,6 +49,7 @@ jobs:
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Bump minor version and update manifest
+        if: github.event_name == 'push'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -71,6 +72,12 @@ jobs:
           git add package.json infra/manifests/deployment.yaml
           git commit -m "chore: release v${VERSION} [skip ci]"
           git push
+
+      - name: Use current version
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="$(node -p 'require("./package.json").version')"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Build and push versioned image
         uses: docker/build-push-action@v6
