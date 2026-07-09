@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -46,9 +48,35 @@ jobs:
       - name: Prepare image name
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
-      - name: Build and push latest image
+      - name: Bump minor version and update manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          npm version minor --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'infra/manifests/deployment.yaml';
+          const image = `ghcr.io/${process.env.IMAGE_NAME}:${process.env.VERSION}`;
+          const manifest = fs.readFileSync(path, 'utf8').replace(
+            /image: ghcr\.io\/pedrovmota\/socket-web:[^\s]+/,
+            `image: ${image}`
+          );
+          fs.writeFileSync(path, manifest);
+          NODE
+
+          git add package.json infra/manifests/deployment.yaml
+          git commit -m "chore: release v${VERSION} [skip ci]"
+          git push
+
+      - name: Build and push versioned image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
