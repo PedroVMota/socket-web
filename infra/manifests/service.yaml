@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: socket-web
+  labels:
+    app.kubernetes.io/name: socket-web
+    app.kubernetes.io/part-of: iot-p3
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: socket-web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

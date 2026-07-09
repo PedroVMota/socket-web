@@ -1,0 +1,14 @@
+{
+  "name": "socket-web",
+  "version": "1.0.0",
+  "description": "HTTP chat UI and WebSocket bridge for the C TCP chat server.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

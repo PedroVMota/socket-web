@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: socket-web
+  labels:
+    app.kubernetes.io/name: socket-web
+    app.kubernetes.io/part-of: iot-p3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: socket-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: socket-web
+        app.kubernetes.io/part-of: iot-p3
+    spec:
+      containers:
+        - name: socket-web
+          image: ghcr.io/pedrovmota/socket-web:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: socket-web-config
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

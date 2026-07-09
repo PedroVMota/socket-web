@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="chat-shell">
+      <section class="chat-panel" aria-label="Chat room">
+        <header class="chat-header">
+          <div>
+            <p class="eyebrow">Mesh chat</p>
+            <h1>chat.local</h1>
+          </div>
+          <span id="status" class="status status-offline">offline</span>
+        </header>
+
+        <ol id="messages" class="messages" aria-live="polite"></ol>
+
+        <form id="chat-form" class="composer">
+          <label class="sr-only" for="message">Message</label>
+          <input id="message" name="message" autocomplete="off" placeholder="Write a message" maxlength="1000" required>
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

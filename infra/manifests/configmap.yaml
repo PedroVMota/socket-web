@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socket-web-config
+  labels:
+    app.kubernetes.io/name: socket-web
+    app.kubernetes.io/part-of: iot-p3
+data:
+  HTTP_HOST: "0.0.0.0"
+  HTTP_PORT: "8080"
+  CHAT_TCP_HOST: "c-web-socket-server"
+  CHAT_TCP_PORT: "5555"
