@@ -6,11 +6,12 @@ metadata:
     app.kubernetes.io/name: socket-web
     app.kubernetes.io/part-of: iot-p3
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: socket-web
   ports:
     - name: http
       port: 8080
       targetPort: http
+      nodePort: 30081
       protocol: TCP
