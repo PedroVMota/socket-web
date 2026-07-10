@@ -7,8 +7,7 @@ metadata:
     app.kubernetes.io/part-of: iot-p3
 spec:
   rules:
-    - host: chat.local
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix
